@@ -6,11 +6,17 @@ const fs = require("fs");
 
 const app = express();
 app.use(cors());
+app.use(express.static('public'));
 
 const DOWNLOAD_DIR = path.join(__dirname, "downloads");
 if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR);
 }
+
+// Ruta para mostrar el formulario HTML
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
 
 app.get("/download", async (req, res) => {
     const videoUrl = req.query.url;
@@ -43,3 +49,4 @@ app.get("/download", async (req, res) => {
 
 const PORT = 3000;
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
+// http://localhost:3000/download?url=https://www.youtube.com/watch?v=4deUxsQOGps
