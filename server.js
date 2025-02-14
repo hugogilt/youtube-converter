@@ -22,28 +22,33 @@ app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
+
 app.get("/download", async (req, res) => {
     const videoUrl = req.query.url;
     if (!videoUrl) return res.status(400).json({ error: "URL no válida" });
 
     try {
-        // Obtener título del video
-        const title = await youtubeDl(videoUrl, { getTitle: true });
+        // Obtener título del video con cabeceras simulando un navegador
+        const title = await youtubeDl(videoUrl, { 
+            getTitle: true,
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
+        });
         const sanitizedTitle = sanitizeFileName(title);
         const fileName = `${sanitizedTitle}.mp3`;
         const outputFilePath = path.join(DOWNLOAD_DIR, fileName);
 
-        // Descargar el audio
+        // Descargar el audio con cabeceras adicionales
         await youtubeDl(videoUrl, {
             extractAudio: true,
             audioFormat: "mp3",
             output: outputFilePath,
+            userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36",
+            referer: "https://www.youtube.com/",
             verbose: true,
         });
 
-        // Establecer el encabezado 'Content-Disposition' para forzar la descarga con el nombre del archivo
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.sendFile(outputFilePath, (err) => {
+        // Enviar el archivo al usuario
+        res.download(outputFilePath, fileName, (err) => {
             if (err) {
                 console.error("Error al enviar el archivo:", err);
                 return res.status(500).json({ error: "Error al descargar el archivo" });
@@ -62,6 +67,7 @@ app.get("/download", async (req, res) => {
         res.status(500).json({ error: "Error en la conversión" });
     }
 });
+
 
 
 
