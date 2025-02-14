@@ -41,8 +41,9 @@ app.get("/download", async (req, res) => {
             verbose: true,
         });
 
-        // Enviar el archivo al usuario
-        res.download(outputFilePath, fileName, (err) => {
+        // Establecer el encabezado 'Content-Disposition' para forzar la descarga con el nombre del archivo
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+        res.sendFile(outputFilePath, (err) => {
             if (err) {
                 console.error("Error al enviar el archivo:", err);
                 return res.status(500).json({ error: "Error al descargar el archivo" });
@@ -61,6 +62,8 @@ app.get("/download", async (req, res) => {
         res.status(500).json({ error: "Error en la conversión" });
     }
 });
+
+
 
 const PORT = 3000;
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
