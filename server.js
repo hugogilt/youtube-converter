@@ -1,52 +1,66 @@
 const express = require("express");
 const cors = require("cors");
-const { exec } = require("youtube-dl-exec");
+const youtubeDl = require("youtube-dl-exec");
 const path = require("path");
 const fs = require("fs");
 
 const app = express();
 app.use(cors());
-app.use(express.static('public'));
+app.use(express.static("public"));
 
 const DOWNLOAD_DIR = path.join(__dirname, "downloads");
 if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR);
 }
 
-// Ruta para mostrar el formulario HTML
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+// Función para limpiar el nombre del archivo
+const sanitizeFileName = (name) => {
+    return name.replace(/[<>:"/\\|?*]+/g, "").trim(); // Elimina caracteres no válidos
+};
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
 app.get("/download", async (req, res) => {
     const videoUrl = req.query.url;
     if (!videoUrl) return res.status(400).json({ error: "URL no válida" });
 
-    const outputFilePath = path.join(DOWNLOAD_DIR, "audio.mp3");
-
     try {
-        await exec(videoUrl, {
+        // Obtener título del video
+        const title = await youtubeDl(videoUrl, { getTitle: true });
+        const sanitizedTitle = sanitizeFileName(title);
+        const fileName = `${sanitizedTitle}.mp3`;
+        const outputFilePath = path.join(DOWNLOAD_DIR, fileName);
+
+        // Descargar el audio
+        await youtubeDl(videoUrl, {
             extractAudio: true,
             audioFormat: "mp3",
             output: outputFilePath,
-            ffmpegLocation: "/usr/bin/ffmpeg", // Ruta a ffmpeg
             verbose: true,
         });
 
-        res.download(outputFilePath, "audio.mp3", (err) => {
+        // Enviar el archivo al usuario
+        res.download(outputFilePath, fileName, (err) => {
             if (err) {
                 console.error("Error al enviar el archivo:", err);
-                res.status(500).json({ error: "Error al descargar el archivo" });
+                return res.status(500).json({ error: "Error al descargar el archivo" });
             }
-            fs.unlinkSync(outputFilePath); // Elimina el archivo después de la descarga
+        });
+
+        // Eliminar el archivo después de la descarga
+        res.on("finish", () => {
+            fs.unlink(outputFilePath, (unlinkErr) => {
+                if (unlinkErr) console.error("Error al eliminar archivo:", unlinkErr);
+            });
         });
 
     } catch (error) {
-        console.error("Error al descargar:", error);
+        console.error("Error en la conversión:", error);
         res.status(500).json({ error: "Error en la conversión" });
     }
 });
 
 const PORT = 3000;
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
-// http://localhost:3000/download?url=https://www.youtube.com/watch?v=4deUxsQOGps
