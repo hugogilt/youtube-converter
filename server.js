@@ -65,5 +65,7 @@ app.get("/download", async (req, res) => {
 
 
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000; // Usa el puerto proporcionado por Render o el 3000 como fallback
+
 app.listen(PORT, () => console.log(`Servidor en http://localhost:${PORT}`));
+
